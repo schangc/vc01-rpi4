@@ -1,0 +1,374 @@
+#!/usr/bin/env python3
+"""
+TPMS BLE Advertising Web Server
+提供 REST API 給前端 Web UI 控制 BLE Advertising
+需要 sudo 執行才能操作 HCI
+
+安裝依賴：
+  pip3 install flask flask-cors
+
+執行：
+  sudo python3 tpms_server.py
+"""
+
+import struct
+import subprocess
+import threading
+import time
+import sys
+import json
+import os
+from flask import Flask, jsonify, request, render_template
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app)
+
+# ── 設定檔路徑 ────────────────────────────────────────────────────────────────
+SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tpms_settings.json")
+
+DEFAULT_TIRES = {
+    "FR": {"pressure": 2.5, "temperature": 25.0, "voltage": 3.0, "leak": False, "active": True, "d2": "11", "d3": "22", "d4": "33", "normal_interval": 60, "normal_packet_count": 1, "normal_packet_interval": 50, "leak_packet_count": 5, "leak_packet_interval": 50},
+    "RR": {"pressure": 2.5, "temperature": 25.0, "voltage": 3.0, "leak": False, "active": True, "d2": "44", "d3": "55", "d4": "66", "normal_interval": 60, "normal_packet_count": 1, "normal_packet_interval": 50, "leak_packet_count": 5, "leak_packet_interval": 50},
+    "FL": {"pressure": 2.5, "temperature": 25.0, "voltage": 3.0, "leak": False, "active": True, "d2": "77", "d3": "88", "d4": "99", "normal_interval": 60, "normal_packet_count": 1, "normal_packet_interval": 50, "leak_packet_count": 5, "leak_packet_interval": 50},
+    "RL": {"pressure": 2.5, "temperature": 25.0, "voltage": 3.0, "leak": False, "active": True, "d2": "AA", "d3": "BB", "d4": "CC", "normal_interval": 60, "normal_packet_count": 1, "normal_packet_interval": 50, "leak_packet_count": 5, "leak_packet_interval": 50},
+}
+
+def load_settings():
+    """從 JSON 檔案載入設定，若不存在則用預設值"""
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, "r") as f:
+                saved = json.load(f)
+            # 合併：以預設值為底，覆蓋已儲存的值
+            tires = {}
+            for tid, defaults in DEFAULT_TIRES.items():
+                tires[tid] = {**defaults, **saved.get("tires", {}).get(tid, {})}
+            return {
+                "mode": saved.get("mode", "single"),
+                "hci": saved.get("hci", "hci0"),
+                "tires": tires,
+            }
+        except Exception as e:
+            print(f"[WARN] 讀取設定失敗，使用預設值：{e}")
+    return {"mode": "single", "hci": "hci0", "tires": {k: dict(v) for k, v in DEFAULT_TIRES.items()}}
+
+def save_settings():
+    """將目前設定存入 JSON 檔案"""
+    try:
+        data = {
+            "mode": advertising_state["mode"],
+            "hci": HCI_DEV,
+            "tires": advertising_state["tires"],
+        }
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"[WARN] 儲存設定失敗：{e}")
+
+# ── 全域狀態 ──────────────────────────────────────────────────────────────────
+_saved = load_settings()
+HCI_DEV = _saved["hci"]
+
+advertising_state = {
+    "running": False,
+    "mode": _saved["mode"],
+    "interval": 100,
+    "tires": _saved["tires"],
+    "current_tire": "FL",
+    "last_payload": {},
+    "log": [],
+}
+
+adv_threads = {}           # tire_id -> Thread
+adv_stop_events = {}       # tire_id -> Event
+hci_lock = threading.Lock()  # HCI 同時只能一顆輪胎使用
+
+TIRE_POSITIONS = {
+    "FR": 0x01,
+    "RR": 0x02,
+    "FL": 0x03,
+    "RL": 0x04,
+}
+
+CUSTOM_MAC_SUFFIX = {
+    "FR": [0x11, 0x22, 0x33],
+    "RR": [0x44, 0x55, 0x66],
+    "FL": [0x77, 0x88, 0x99],
+    "RL": [0xAA, 0xBB, 0xCC],
+}
+
+# ── CRC16 ─────────────────────────────────────────────────────────────────────
+def crc16(data: bytes) -> int:
+    crc = 0xFFFF
+    for byte in data:
+        crc ^= byte << 8
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = (crc << 1) ^ 0x8005
+            else:
+                crc <<= 1
+            crc &= 0xFFFF
+    return crc
+
+# ── Payload 組裝 ──────────────────────────────────────────────────────────────
+def build_manufacturer_data(tire_id, tire_data):
+    position = TIRE_POSITIONS[tire_id]
+    d2 = int(tire_data.get("d2", "00"), 16) & 0xFF
+    d3 = int(tire_data.get("d3", "00"), 16) & 0xFF
+    d4 = int(tire_data.get("d4", "00"), 16) & 0xFF
+    pressure_raw = int(tire_data["pressure"] * 100 / 3.13) & 0xFF
+    temp_raw = int(tire_data["temperature"] + 50) & 0xFF
+    voltage_raw = int((tire_data["voltage"] - 1.22) / 0.01) & 0xFF
+    leak_byte = 0x01 if tire_data["leak"] else 0x00
+
+    payload = bytes([
+        0x68, 0x5A, 0x00,
+        leak_byte, 0x80, 0x23,
+        position,
+        d2, d3, d4,
+        pressure_raw, temp_raw, voltage_raw,
+    ])
+    crc = crc16(payload)
+    return payload + bytes([(crc >> 8) & 0xFF, crc & 0xFF])
+
+def build_adv_payload(mfr_data: bytes) -> bytes:
+    flags = bytes([0x02, 0x01, 0x06])
+    name_bytes = b"BY-N2"
+    name = bytes([len(name_bytes) + 1, 0x09]) + name_bytes
+    mfr = bytes([len(mfr_data) + 1, 0xFF]) + mfr_data
+    return flags + name + mfr
+
+# ── HCI 操作 ──────────────────────────────────────────────────────────────────
+def hci_cmd(cmd_hex: str):
+    cmd = f"hcitool -i {HCI_DEV} cmd {cmd_hex}"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    return result.returncode == 0
+
+def set_adv_data(adv_payload: bytes):
+    length = len(adv_payload)
+    padded = adv_payload + bytes(31 - length)
+    hex_str = " ".join(f"{b:02X}" for b in padded)
+    return hci_cmd(f"0x08 0x0008 {length:02X} {hex_str}")
+
+def set_adv_params(interval_ms: int = 100):
+    interval = int(interval_ms / 0.625)
+    lo = interval & 0xFF
+    hi = (interval >> 8) & 0xFF
+    return hci_cmd(f"0x08 0x0006 {lo:02X} {hi:02X} {lo:02X} {hi:02X} 03 00 00 00 00 00 00 00 07 00")
+
+def set_adv_enable(enable: bool):
+    return hci_cmd(f"0x08 0x000A {'01' if enable else '00'}")
+
+def ensure_adv_ready():
+    """確保 BlueZ 廣播模式已開啟，避免 hcitool 指令被 BlueZ 覆蓋"""
+    subprocess.run(["btmgmt", "advertising", "on"], capture_output=True, timeout=5)
+
+# ── 廣播邏輯 ──────────────────────────────────────────────────────────────────
+def add_log(msg):
+    advertising_state["log"].append({"time": time.strftime("%H:%M:%S"), "msg": msg})
+    if len(advertising_state["log"]) > 50:
+        advertising_state["log"].pop(0)
+
+def do_advertise_single(tire_id):
+    tire_data = advertising_state["tires"][tire_id]
+    mfr = build_manufacturer_data(tire_id, tire_data)
+    adv = build_adv_payload(mfr)
+    crc = (mfr[13] << 8) | mfr[14]
+
+    advertising_state["last_payload"][tire_id] = {
+        "mfr_hex": mfr.hex(" ").upper(),
+        "adv_hex": adv.hex(" ").upper(),
+        "pressure_raw": mfr[10],
+        "temp_raw": mfr[11],
+        "voltage_raw": mfr[12],
+        "crc": f"0x{crc:04X}",
+    }
+
+    set_adv_data(adv)
+    set_adv_enable(True)
+    add_log(f"[{tire_id}] 廣播中 | {tire_data['pressure']:.2f}Bar {tire_data['temperature']:.1f}°C {tire_data['voltage']:.2f}V CRC={crc:04X}")
+
+def tire_loop(tire_id, stop_event):
+    """每顆輪胎獨立的廣播 Thread"""
+    add_log(f"[{tire_id}] 開始獨立廣播")
+    while not stop_event.is_set():
+        tire_data = advertising_state["tires"][tire_id]
+        is_leak = tire_data.get("leak", False)
+        normal_interval = tire_data.get("normal_interval", 60)
+
+        if not is_leak and normal_interval == 0:
+            stop_event.wait(1)
+            continue
+
+
+        with hci_lock:
+            send_tire_packets(tire_id, stop_event)
+
+        if is_leak:
+            # 漏氣模式：等待封包間隔後繼續發送
+            wait_sec = tire_data.get("leak_packet_interval", 50) / 1000.0
+        else:
+            # 正常模式：等待 normal_interval 秒
+            wait_sec = normal_interval
+
+        stop_event.wait(wait_sec)
+
+    add_log(f"[{tire_id}] 廣播已停止")
+
+
+def send_tire_packets(tire_id, stop_event):
+    """依照輪胎設定發送指定數量的封包"""
+    tire_data = advertising_state["tires"][tire_id]
+    is_leak = tire_data.get("leak", False)
+
+    mfr = build_manufacturer_data(tire_id, tire_data)
+    adv = build_adv_payload(mfr)
+    crc = (mfr[13] << 8) | mfr[14]
+
+    advertising_state["last_payload"][tire_id] = {
+        "mfr_hex": mfr.hex(" ").upper(),
+        "adv_hex": adv.hex(" ").upper(),
+        "pressure_raw": mfr[10],
+        "temp_raw": mfr[11],
+        "voltage_raw": mfr[12],
+        "crc": f"0x{crc:04X}",
+    }
+    advertising_state["current_tire"] = tire_id
+
+    if is_leak:
+        count = tire_data.get("leak_packet_count", 5)
+        pkt_interval = tire_data.get("leak_packet_interval", 50) / 1000.0
+    else:
+        count = tire_data.get("normal_packet_count", 1)
+        pkt_interval = tire_data.get("normal_packet_interval", 50) / 1000.0
+
+    set_adv_params(50)
+    set_adv_data(adv)
+    for i in range(count):
+        if stop_event.is_set():
+            break
+        set_adv_enable(True)
+        stop_event.wait(pkt_interval)
+        set_adv_enable(False)
+
+    mode_str = "漏氣" if is_leak else "正常"
+    add_log(f"[{tire_id}] {mode_str} | {tire_data['pressure']:.2f}Bar {tire_data['temperature']:.1f}°C | {count}封包 間隔{int(pkt_interval*1000)}ms | CRC={crc:04X}")
+
+
+# ── API Routes ────────────────────────────────────────────────────────────────
+@app.route("/api/status", methods=["GET"])
+def get_status():
+    return jsonify({
+        "running": advertising_state["running"],
+        "mode": advertising_state["mode"],
+        "interval": advertising_state["interval"],
+        "current_tire": advertising_state["current_tire"],
+        "tires": advertising_state["tires"],
+        "last_payload": advertising_state["last_payload"],
+        "log": advertising_state["log"][-10:],
+    })
+
+@app.route("/api/tire/<tire_id>", methods=["POST"])
+def update_tire(tire_id):
+    if tire_id not in TIRE_POSITIONS:
+        return jsonify({"error": "Invalid tire ID"}), 400
+    data = request.json
+    t = advertising_state["tires"][tire_id]
+    if "pressure" in data:
+        t["pressure"] = float(data["pressure"])
+    if "temperature" in data:
+        t["temperature"] = float(data["temperature"])
+    if "voltage" in data:
+        t["voltage"] = float(data["voltage"])
+    if "leak" in data:
+        t["leak"] = bool(data["leak"])
+    if "active" in data:
+        t["active"] = bool(data["active"])
+    if "d2" in data:
+        t["d2"] = str(data["d2"])
+    if "d3" in data:
+        t["d3"] = str(data["d3"])
+    if "d4" in data:
+        t["d4"] = str(data["d4"])
+    if "normal_interval" in data:
+        t["normal_interval"] = int(data["normal_interval"])
+    if "normal_packet_count" in data:
+        t["normal_packet_count"] = int(data["normal_packet_count"])
+    if "normal_packet_interval" in data:
+        t["normal_packet_interval"] = int(data["normal_packet_interval"])
+    if "leak_packet_count" in data:
+        t["leak_packet_count"] = int(data["leak_packet_count"])
+    if "leak_packet_interval" in data:
+        t["leak_packet_interval"] = int(data["leak_packet_interval"])
+    save_settings()
+    return jsonify({"ok": True, "tire": t})
+
+@app.route("/api/start", methods=["POST"])
+def start_advertising():
+    global adv_threads, adv_stop_events
+    data = request.json or {}
+    advertising_state["mode"] = data.get("mode", "single")
+    advertising_state["current_tire"] = data.get("tire", "FL")
+
+    if advertising_state["running"]:
+        return jsonify({"ok": False, "error": "Already running"})
+
+    mode = advertising_state["mode"]
+    tires_to_run = ["FL", "FR", "RL", "RR"] if mode == "all" else [advertising_state["current_tire"]]
+
+    for tire_id in tires_to_run:
+        stop_ev = threading.Event()
+        adv_stop_events[tire_id] = stop_ev
+        t = threading.Thread(target=tire_loop, args=(tire_id, stop_ev), daemon=True)
+        adv_threads[tire_id] = t
+        t.start()
+
+    advertising_state["running"] = True
+    add_log(f"開始廣播 mode={mode} tires={tires_to_run}")
+    return jsonify({"ok": True})
+
+@app.route("/api/stop", methods=["POST"])
+def stop_advertising():
+    global adv_threads, adv_stop_events
+    for tire_id, stop_ev in adv_stop_events.items():
+        stop_ev.set()
+    adv_threads.clear()
+    adv_stop_events.clear()
+    set_adv_enable(False)
+    advertising_state["running"] = False
+    add_log("所有廣播已停止")
+    return jsonify({"ok": True})
+
+@app.route("/api/hci", methods=["POST"])
+def set_hci():
+    global HCI_DEV
+    data = request.json or {}
+    HCI_DEV = data.get("hci", "hci0")
+    save_settings()
+    return jsonify({"ok": True, "hci": HCI_DEV})
+
+@app.route("/")
+def index():
+    return render_template("tpms_ui.html")
+
+
+def auto_start_advertising():
+    global adv_threads, adv_stop_events
+    advertising_state["mode"] = "all"
+    tires_to_run = ["FL", "FR", "RL", "RR"]
+    for tire_id in tires_to_run:
+        stop_ev = threading.Event()
+        adv_stop_events[tire_id] = stop_ev
+        t = threading.Thread(target=tire_loop, args=(tire_id, stop_ev), daemon=True)
+        adv_threads[tire_id] = t
+        t.start()
+    advertising_state["running"] = True
+    add_log("Auto-start: mode=all")
+    print("[AUTO] started mode=all")
+
+if __name__ == "__main__":
+    print("TPMS BLE Web Server 啟動中...")
+    print("請用瀏覽器開啟 http://<Pi的IP>:5000")
+    auto_start_advertising()
+    app.run(host="0.0.0.0", port=5000, debug=False)

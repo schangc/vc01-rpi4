@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TPMS BLE Transmitter · 友立森科技有限公司</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red:      #cc0000;
+    --red-l:    #e60000;
+    --red-pale: #fff0f0;
+    --dark:     #222222;
+    --mid:      #555555;
+    --muted:    #999999;
+    --border:   #e0e0e0;
+    --bg:       #f8f8f8;
+    --white:    #ffffff;
+    --ok:       #2a8a4a;
+    --ok-pale:  #edfaf2;
+    --warn:     #c47a00;
+    --sans:     'Noto Sans TC', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--white);
+    color: var(--dark);
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.6;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 0 48px;
+    display: flex;
+    align-items: center;
+    height: 68px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    margin-right: 40px;
+    flex-shrink: 0;
+  }
+
+  /* U circle logo matching Unison style */
+  .logo-mark {
+    width: 40px; height: 40px;
+    background: var(--red);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    font-weight: 900;
+    color: white;
+    font-family: serif;
+    letter-spacing: -1px;
+  }
+
+  .logo-text-wrap { display: flex; flex-direction: column; line-height: 1.2; }
+  .logo-co {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--dark);
+    letter-spacing: 0.5px;
+  }
+  .logo-co span { color: var(--red); }
+  .logo-sub {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  nav {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-left: auto;
+  }
+
+  nav a {
+    color: var(--mid);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 0 16px;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  nav .sep { color: var(--border); font-size: 12px; }
+  nav a:hover { color: var(--red); }
+  nav a.active { color: var(--red); border-bottom-color: var(--red); font-weight: 500; }
+
+  /* ── Page hero ── */
+  .hero {
+    background: var(--white);
+    padding: 32px 48px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    right: -60px; top: -40px;
+    width: 500px; height: 280px;
+    background:
+      radial-gradient(ellipse 80% 60% at 70% 40%, rgba(204,0,0,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  /* red wave decoration */
+  .hero-wave {
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 260px;
+    pointer-events: none;
+    opacity: 0.18;
+  }
+
+  .breadcrumb {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .breadcrumb a { color: var(--muted); text-decoration: none; }
+  .breadcrumb a:hover { color: var(--red); }
+  .breadcrumb .sep { color: var(--border); }
+
+  .hero h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+  .hero h1 span { color: var(--red); }
+  .hero-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+
+  .hero-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    gap: 0;
+  }
+  .hero-tab {
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--mid);
+    cursor: pointer;
+    border: none;
+    background: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+  .hero-tab:hover { color: var(--red); }
+  .hero-tab.active { color: var(--red); border-bottom-color: var(--red); font-weight: 500; }
+
+  /* ── Main layout ── */
+  main {
+    max-width: 1200px;
+    margin: 32px auto;
+    padding: 0 48px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; padding: 0 20px; }
+    .topbar { padding: 0 20px; }
+    .hero { padding: 24px 20px 0; }
+  }
+
+  /* ── Section title ── */
+  .sec-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--dark);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--red);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sec-title::before {
+    content: '';
+    width: 4px; height: 16px;
+    background: var(--red);
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  /* ── Car overview – full width ── */
+  .car-section { grid-column: 1 / -1; }
+
+  .car-panel {
+    background: var(--white);
+    border: 1px solid var(--border);
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 40px;
+  }
+
+  .car-diagram {
+    position: relative;
+    width: 150px;
+    flex-shrink: 0;
+  }
+  .car-diagram svg { width: 100%; }
+
+  .tire-node {
+    position: absolute;
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: var(--white);
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .tire-node:hover { border-color: var(--red); }
+  .tire-node.selected { border-color: var(--red); background: var(--red-pale); box-shadow: 0 0 0 3px rgba(204,0,0,0.1); }
+  .tire-node.broadcasting { border-color: var(--ok); background: var(--ok-pale); animation: pulse-ok 1.4s infinite; }
+  .tire-node.leak { border-color: var(--red); background: var(--red-pale); animation: pulse-red 1s infinite; }
+  @keyframes pulse-ok  { 0%,100%{box-shadow:0 0 0 2px rgba(42,138,74,0.2)} 50%{box-shadow:0 0 0 6px rgba(42,138,74,0.1)} }
+  @keyframes pulse-red { 0%,100%{box-shadow:0 0 0 2px rgba(204,0,0,0.2)}  50%{box-shadow:0 0 0 6px rgba(204,0,0,0.1)} }
+  .tire-node .pos-id   { font-size: 11px; font-weight: 700; color: var(--dark); letter-spacing: 0.5px; }
+  .tire-node .pos-name { font-size: 9px;  color: var(--muted); }
+  .tire-node[data-pos="FL"] { top: -5%;   left: -28px; }
+  .tire-node[data-pos="FR"] { top: -5%;   right: -28px; }
+  .tire-node[data-pos="RL"] { bottom: -5%; left: -28px; }
+  .tire-node[data-pos="RR"] { bottom: -5%; right: -28px; }
+
+  .tire-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .tire-card {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--bg);
+  }
+  .tire-card:hover { border-color: var(--red); background: var(--red-pale); }
+  .tire-card.selected { border-color: var(--red); border-left-color: var(--red); background: var(--red-pale); }
+  .tire-card.broadcasting { border-color: var(--ok); border-left-color: var(--ok); background: var(--ok-pale); }
+
+  .tc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .tc-pos { font-size: 13px; font-weight: 700; color: var(--dark); letter-spacing: 0.5px; }
+  .tc-badge { font-size: 10px; padding: 2px 7px; border-radius: 2px; font-weight: 500; letter-spacing: 0.5px; }
+  .b-idle { background: #eeeeee; color: var(--muted); }
+  .b-tx   { background: #d4f0e0; color: var(--ok); }
+  .b-leak { background: var(--red-pale); color: var(--red); }
+
+  .tc-vals { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; text-align: center; }
+  .tc-val .v-num  { font-size: 16px; font-weight: 700; color: var(--dark); }
+  .tc-val .v-unit { font-size: 10px; color: var(--muted); display: block; }
+
+  /* ── Form card ── */
+  .form-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    padding: 24px;
+  }
+
+  .tire-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .tire-tab {
+    padding: 7px 14px;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    border: none; background: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+  }
+  .tire-tab:hover { color: var(--red); }
+  .tire-tab.active { color: var(--red); border-bottom-color: var(--red); font-weight: 500; }
+
+  .field { margin-bottom: 18px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .field-row { display: flex; gap: 8px; align-items: center; }
+
+  input[type=number], input[type=text], select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    background: var(--white);
+    color: var(--dark);
+    font-family: var(--sans);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input:focus, select:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(204,0,0,0.08);
+  }
+  .unit { font-size: 12px; color: var(--muted); white-space: nowrap; min-width: 28px; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%; height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    margin: 8px 0 2px;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--red);
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(204,0,0,0.3);
+  }
+
+  .toggle-wrap { display: flex; align-items: center; gap: 12px; }
+  .toggle { position: relative; width: 42px; height: 22px; cursor: pointer; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-track { position: absolute; inset: 0; background: var(--border); border-radius: 11px; transition: background 0.2s; }
+  .toggle input:checked + .toggle-track { background: var(--red); }
+  .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  .toggle input:checked ~ .toggle-thumb { left: 23px; }
+  .toggle-label { font-size: 13px; color: var(--dark); }
+
+  /* ── Buttons ── */
+  .btn {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    padding: 10px 24px;
+    border-radius: 2px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-red:hover { background: var(--red-l); box-shadow: 0 3px 10px rgba(204,0,0,0.25); }
+  .btn-outline-red { background: transparent; color: var(--red); border: 1px solid var(--red); }
+  .btn-outline-red:hover { background: var(--red-pale); }
+  .btn-gray { background: #f0f0f0; color: var(--mid); border: 1px solid var(--border); }
+  .btn-gray:hover { background: #e5e5e5; }
+  .btn-row { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+  /* ── Mode selector ── */
+  .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+  .mode-card {
+    border: 1px solid var(--border);
+    padding: 14px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    background: var(--bg);
+  }
+  .mode-card:hover { border-color: var(--red); }
+  .mode-card.active { border-color: var(--red); background: var(--red-pale); }
+  .mode-card .mc-icon { font-size: 20px; margin-bottom: 4px; }
+  .mode-card .mc-label { font-size: 12px; font-weight: 500; color: var(--dark); }
+  .mode-card .mc-desc  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Status bar ── */
+  .status-bar {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-top: none;
+    display: flex;
+  }
+  .status-item { flex: 1; padding: 10px 16px; border-right: 1px solid var(--border); text-align: center; }
+  .status-item:last-child { border-right: none; }
+  .s-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .s-val { font-size: 14px; font-weight: 700; color: var(--dark); margin-top: 2px; }
+
+  /* ── TX indicator ── */
+  .tx-pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .tx-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: background 0.3s; }
+  .tx-dot.on { background: var(--ok); animation: blink 1.2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .tx-pill.on { color: var(--ok); border-color: var(--ok); }
+
+  /* ── Payload ── */
+  .payload-box {
+    background: #1a1a1a;
+    border-radius: 2px;
+    padding: 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 2;
+    min-height: 80px;
+  }
+  .pl-label { font-size: 9px; letter-spacing: 2px; color: #666; text-transform: uppercase; display: block; margin-bottom: 2px; }
+  .pl-hex { color: #7ec8a4; }
+  .pl-crc { color: #f6a96b; }
+  .pl-meta { color: #aaa; font-size: 11px; }
+
+  /* ── Log ── */
+  .log-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    max-height: 160px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+  }
+  .log-row { display: flex; gap: 12px; padding: 5px 14px; border-bottom: 1px solid var(--border); }
+  .log-row:last-child { border-bottom: none; }
+  .log-time { color: var(--red); white-space: nowrap; }
+  .log-msg { color: var(--mid); }
+
+  /* ── Footer ── */
+  footer {
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    margin-top: 60px;
+    padding: 20px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* wave SVG background decoration */
+  .wave-bg {
+    position: fixed;
+    right: 0; top: 50%;
+    transform: translateY(-50%);
+    width: 320px;
+    opacity: 0.04;
+    pointer-events: none;
+    z-index: 0;
+  }
+  main, .hero { position: relative; z-index: 1; }
+</style>
+</head>
+<body>
+
+<!-- Wave decoration -->
+<svg class="wave-bg" viewBox="0 0 320 600" xmlns="http://www.w3.org/2000/svg">
+  <path d="M320,0 Q200,150 280,300 Q360,450 240,600" stroke="#cc0000" stroke-width="60" fill="none" opacity="0.5"/>
+  <path d="M320,0 Q160,200 260,350 Q340,480 200,600" stroke="#cc0000" stroke-width="30" fill="none" opacity="0.4"/>
+  <path d="M320,50 Q180,230 250,380 Q310,500 180,600" stroke="#cc0000" stroke-width="15" fill="none" opacity="0.3"/>
+</svg>
+
+<!-- Top navigation -->
+<header class="topbar">
+  <a class="logo" href="#">
+    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 77 20" style="height:36px;width:auto">
+      <style>.st0{fill:#B71F23;}.st1{fill:none;}.st2{fill:#F18F30;}.st3{fill:#939393;}.st4{fill:#FFFFFF;}</style>
+      <g><path class="st0" d="M7.55,12.57V2.89H4.14v9.82c0,2.42,2.58,4.25,5.76,4.25c0.62,0,1.22-0.07,1.78-0.21l-2.97,3.01C3.8,19.18,0,15.01,0,9.95C0,4.5,4.42,0.08,9.87,0.08c5.01,0,9.14,3.73,9.79,8.56l-4.01,4.07l0,0V2.89h-1.66v9.69c0,1.53-1.44,2.5-3.22,2.5S7.55,14.1,7.55,12.57"/></g>
+      <g><g><g>
+        <path class="st1" d="M57.14,7.96c-1.89,0-3.44,2.15-3.58,4.88h7.17C60.58,10.11,59.03,7.96,57.14,7.96z"/>
+        <rect x="31" y="6.53" class="st2" width="1.49" height="6.31"/>
+        <polygon class="st2" points="24.1,6.53 21.35,6.53 21.35,12.85 23.02,12.85 23.02,10.89 24.47,12.85 28.77,12.85"/>
+        <rect x="75.45" y="6.53" class="st2" width="1.49" height="6.31"/>
+        <polygon class="st2" points="68.56,6.53 65.81,6.53 65.81,12.85 67.48,12.85 67.48,10.89 68.93,12.85 73.23,12.85"/>
+        <rect x="35.2" y="6.53" class="st2" width="3.07" height="6.31"/>
+        <path class="st2" d="M45.23,11.27c0,0-1.3-0.12-1.74-1.07c-0.51-1.08,0.43-2.29,1.64-2.24c0.7,0.03,1.65,0.32,2.9,1.18l0.64-1.93c0,0-7.44-3.12-8.4,3c0,0-0.27,1.45,0.72,2.64h7.23C47.68,12.22,46.8,11.58,45.23,11.27z"/>
+        <path class="st2" d="M57.14,6.53c-3.65,0-6.64,2.79-6.86,6.31h3.28c0.15-2.73,1.69-4.88,3.58-4.88c1.89,0,3.44,2.15,3.58,4.88H64C63.77,9.32,60.79,6.53,57.14,6.53z"/>
+      </g><g>
+        <polygon class="st3" points="31,15.85 28.77,12.85 24.47,12.85 29.77,20 32.49,20 32.49,12.85 31,12.85"/>
+        <rect x="21.35" y="12.85" class="st3" width="1.67" height="7.15"/>
+        <polygon class="st3" points="65.81,20 65.81,20 67.48,20 67.48,20 67.48,12.85 65.81,12.85"/>
+        <polygon class="st3" points="75.45,12.85 75.45,15.85 73.23,12.85 68.93,12.85 74.23,20 74.23,20 76.95,20 76.95,20 76.95,12.85"/>
+        <rect x="35.2" y="12.85" class="st3" width="3.07" height="7.15"/>
+        <path class="st3" d="M48.89,13.98c-0.14-0.31-0.34-0.72-0.69-1.14h-7.23c0.49,0.59,1.29,1.12,2.59,1.38c0.24,0.05,0.47,0.11,0.69,0.21c0.25,0.11,0.58,0.28,0.89,0.52c1.3,0.99,0.86,2.98-0.79,3.34c-0.87,0.19-2.1-0.01-3.65-1.41l-0.47,2.13c0,0,1.83,0.95,4.02,0.99h0.22c1.11-0.01,2.3-0.26,3.38-0.99c0,0,1.77-1.09,1.38-3.91C49.17,14.71,49.05,14.34,48.89,13.98z"/>
+        <path class="st3" d="M60.72,12.85c0.01,0.14,0.01,0.28,0.01,0.42c0,2.93-1.61,5.3-3.6,5.3c-1.99,0-3.6-2.37-3.6-5.3c0-0.14,0.01-0.28,0.01-0.42h-3.28c-0.01,0.14-0.02,0.28-0.02,0.42c0,3.71,3.06,6.71,6.84,6.73c0.01,0,0.03,0,0.04,0c0.01,0,0.03,0,0.04,0c3.78-0.02,6.84-3.03,6.84-6.73c0-0.14-0.01-0.28-0.02-0.42H60.72z"/>
+      </g></g></g>
+    </svg>
+  </a>
+  <nav>
+    <a href="#">首頁</a><span class="sep">/</span>
+    <a href="#">公司介紹</a><span class="sep">/</span>
+    <a href="#">產品介紹</a><span class="sep">/</span>
+    <a href="#" class="active">產品應用</a><span class="sep">/</span>
+    <a href="#">技術下載</a><span class="sep">/</span>
+    <a href="#">聯絡我們</a>
+  </nav>
+  <div style="margin-left:24px">
+    <div class="tx-pill" id="txPill">
+      <div class="tx-dot" id="txDot"></div>
+      <span id="txLabel">IDLE</span>
+    </div>
+  </div>
+</header>
+
+<!-- Hero -->
+<div class="hero">
+  <svg class="hero-wave" viewBox="0 0 260 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <path d="M260,0 Q160,50 200,100 Q240,150 140,200" stroke="#cc0000" stroke-width="50" fill="none"/>
+    <path d="M260,20 Q140,80 190,130 Q230,170 120,200" stroke="#cc0000" stroke-width="25" fill="none"/>
+    <path d="M260,40 Q150,100 185,150 Q215,185 110,200" stroke="#cc0000" stroke-width="10" fill="none"/>
+  </svg>
+  <div class="breadcrumb">
+    <a href="#">首頁</a><span class="sep">/</span>
+    <a href="#">產品應用</a><span class="sep">/</span>
+    <span>TPMS BLE Transmitter</span>
+  </div>
+  <h1>TPMS BLE Advertising 控制台</h1>
+  <p class="hero-sub">BLE 廣播模擬工具 · 2.4GHz ISM · GFSK · 1Mbps · ADV 廣播模式</p>
+  <div class="hero-tabs">
+    <button class="hero-tab active">TX 控制台</button>
+    <button class="hero-tab">裝置資訊</button>
+    <button class="hero-tab">關於本裝置</button>
+  </div>
+</div>
+
+<main>
+
+  <!-- Car overview -->
+  <section class="car-section">
+    <div class="sec-title">輪胎狀態總覽</div>
+    <div class="car-panel">
+      <!-- Diagram -->
+      <div class="car-diagram">
+        <svg viewBox="0 0 100 190" xmlns="http://www.w3.org/2000/svg">
+          <rect x="20" y="20" width="60" height="150" rx="14" fill="#f5f5f5" stroke="#ddd" stroke-width="1.5"/>
+          <rect x="26" y="36" width="48" height="118" rx="8" fill="#ebebeb"/>
+          <rect x="30" y="46" width="40" height="36" rx="3" fill="#d0e8f8" opacity="0.8" stroke="#b8d8f0" stroke-width="1"/>
+          <rect x="30" y="100" width="40" height="26" rx="3" fill="#d0e8f8" opacity="0.8" stroke="#b8d8f0" stroke-width="1"/>
+          <line x1="50" y1="20" x2="50" y2="170" stroke="#ddd" stroke-width="1" stroke-dasharray="4,4"/>
+          <rect x="6"  y="30" width="14" height="26" rx="3" fill="#aaaaaa"/>
+          <rect x="80" y="30" width="14" height="26" rx="3" fill="#aaaaaa"/>
+          <rect x="6"  y="132" width="14" height="26" rx="3" fill="#aaaaaa"/>
+          <rect x="80" y="132" width="14" height="26" rx="3" fill="#aaaaaa"/>
+          <text x="50" y="14" text-anchor="middle" font-size="6" fill="#bbb" font-family="sans-serif" letter-spacing="1">FRONT</text>
+          <text x="50" y="184" text-anchor="middle" font-size="6" fill="#bbb" font-family="sans-serif" letter-spacing="1">REAR</text>
+        </svg>
+        <div class="tire-node selected" data-pos="FL" id="node-FL" onclick="selectTire('FL')">
+          <span class="pos-id">FL</span><span class="pos-name">左前</span>
+        </div>
+        <div class="tire-node" data-pos="FR" id="node-FR" onclick="selectTire('FR')">
+          <span class="pos-id">FR</span><span class="pos-name">右前</span>
+        </div>
+        <div class="tire-node" data-pos="RL" id="node-RL" onclick="selectTire('RL')">
+          <span class="pos-id">RL</span><span class="pos-name">左後</span>
+        </div>
+        <div class="tire-node" data-pos="RR" id="node-RR" onclick="selectTire('RR')">
+          <span class="pos-id">RR</span><span class="pos-name">右後</span>
+        </div>
+      </div>
+
+      <!-- Tire cards -->
+      <div class="tire-grid">
+        <div class="tire-card selected" id="tc-FL" onclick="selectTire('FL')">
+          <div class="tc-head"><span class="tc-pos">FL 左前</span><span class="tc-badge b-idle" id="badge-FL">IDLE</span></div>
+          <div class="tc-vals">
+            <div class="tc-val"><div class="v-num" id="tp-FL">2.50</div><span class="v-unit">Bar</span></div>
+            <div class="tc-val"><div class="v-num" id="tt-FL">25.0</div><span class="v-unit">°C</span></div>
+            <div class="tc-val"><div class="v-num" id="tv-FL">3.00</div><span class="v-unit">V</span></div>
+          </div>
+        </div>
+        <div class="tire-card" id="tc-FR" onclick="selectTire('FR')">
+          <div class="tc-head"><span class="tc-pos">FR 右前</span><span class="tc-badge b-idle" id="badge-FR">IDLE</span></div>
+          <div class="tc-vals">
+            <div class="tc-val"><div class="v-num" id="tp-FR">2.50</div><span class="v-unit">Bar</span></div>
+            <div class="tc-val"><div class="v-num" id="tt-FR">25.0</div><span class="v-unit">°C</span></div>
+            <div class="tc-val"><div class="v-num" id="tv-FR">3.00</div><span class="v-unit">V</span></div>
+          </div>
+        </div>
+        <div class="tire-card" id="tc-RL" onclick="selectTire('RL')">
+          <div class="tc-head"><span class="tc-pos">RL 左後</span><span class="tc-badge b-idle" id="badge-RL">IDLE</span></div>
+          <div class="tc-vals">
+            <div class="tc-val"><div class="v-num" id="tp-RL">2.50</div><span class="v-unit">Bar</span></div>
+            <div class="tc-val"><div class="v-num" id="tt-RL">25.0</div><span class="v-unit">°C</span></div>
+            <div class="tc-val"><div class="v-num" id="tv-RL">3.00</div><span class="v-unit">V</span></div>
+          </div>
+        </div>
+        <div class="tire-card" id="tc-RR" onclick="selectTire('RR')">
+          <div class="tc-head"><span class="tc-pos">RR 右後</span><span class="tc-badge b-idle" id="badge-RR">IDLE</span></div>
+          <div class="tc-vals">
+            <div class="tc-val"><div class="v-num" id="tp-RR">2.50</div><span class="v-unit">Bar</span></div>
+            <div class="tc-val"><div class="v-num" id="tt-RR">25.0</div><span class="v-unit">°C</span></div>
+            <div class="tc-val"><div class="v-num" id="tv-RR">3.00</div><span class="v-unit">V</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Left: Tire input -->
+  <section>
+    <div class="sec-title">輪胎數值設定</div>
+    <div class="form-card">
+      <div class="tire-tabs">
+        <button class="tire-tab active" onclick="selectTire('FL')" id="tab-FL">FL 左前</button>
+        <button class="tire-tab" onclick="selectTire('FR')" id="tab-FR">FR 右前</button>
+        <button class="tire-tab" onclick="selectTire('RL')" id="tab-RL">RL 左後</button>
+        <button class="tire-tab" onclick="selectTire('RR')" id="tab-RR">RR 右後</button>
+      </div>
+
+      <div class="field">
+        <label>胎壓</label>
+        <div class="field-row">
+          <input type="number" id="pressure" min="0" max="6" step="0.01" value="2.50" oninput="syncSlider('pressure')">
+          <span class="unit">Bar</span>
+        </div>
+        <input type="range" id="pressure-range" min="0" max="6" step="0.01" value="2.50" oninput="syncInput('pressure')">
+      </div>
+
+      <div class="field">
+        <label>溫度</label>
+        <div class="field-row">
+          <input type="number" id="temperature" min="-50" max="125" step="1" value="25" oninput="syncSlider('temperature')">
+          <span class="unit">°C</span>
+        </div>
+        <input type="range" id="temperature-range" min="-50" max="125" step="1" value="25" oninput="syncInput('temperature')">
+      </div>
+
+      <div class="field">
+        <label>電壓</label>
+        <div class="field-row">
+          <input type="number" id="voltage" min="1.22" max="4.77" step="0.01" value="3.00" oninput="syncSlider('voltage')">
+          <span class="unit">V</span>
+        </div>
+        <input type="range" id="voltage-range" min="1.22" max="4.77" step="0.01" value="3.00" oninput="syncInput('voltage')">
+      </div>
+
+      <div class="field">
+        <label>感測器 ID（D2 · D3 · D4）</label>
+        <div class="field-row" style="gap:6px">
+          <input type="text" id="d2" maxlength="2" placeholder="00" style="text-align:center;text-transform:uppercase;font-family:monospace">
+          <input type="text" id="d3" maxlength="2" placeholder="00" style="text-align:center;text-transform:uppercase;font-family:monospace">
+          <input type="text" id="d4" maxlength="2" placeholder="00" style="text-align:center;text-transform:uppercase;font-family:monospace">
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">各欄位輸入 2 位 Hex 值（00 ~ FF）</div>
+      </div>
+
+      <div class="field">
+        <label>漏氣狀態</label>
+        <div class="toggle-wrap">
+          <label class="toggle">
+            <input type="checkbox" id="leak" onchange="onLeakChange()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+          <span class="toggle-label" id="leak-label">正常</span>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Normal mode timing -->
+      <div id="normal-timing-section">
+        <div style="font-size:11px;font-weight:700;color:var(--red);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">正常模式 · 發送參數</div>
+
+        <div class="field">
+          <label>發送間隔時間</label>
+          <div class="field-row">
+            <input type="number" id="normal-interval" min="0" max="1000" step="5" value="60" style="width:80px;" oninput="roundNormalInterval(this.value)">
+            <span class="unit" id="normal-interval-unit">秒</span>
+          </div>
+          <input type="range" id="normal-interval-range" min="0" max="1000" step="5" value="60" oninput="syncNormalInterval(this.value)">
+        </div>
+
+        <div class="field">
+          <label>每次封包數量</label>
+          <div class="field-row">
+            <select id="normal-packet-count">
+              <option value="1" selected>1</option><option value="2">2</option><option value="3">3</option>
+              <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+              <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+              <option value="10">10</option>
+            </select>
+            <span class="unit">個</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>封包間隔時間</label>
+          <div class="field-row">
+            <select id="normal-packet-interval">
+              <option value="50" selected>50ms</option><option value="100">100ms</option><option value="150">150ms</option>
+              <option value="200">200ms</option><option value="250">250ms</option><option value="300">300ms</option>
+              <option value="350">350ms</option><option value="400">400ms</option><option value="450">450ms</option>
+              <option value="500">500ms</option><option value="550">550ms</option><option value="600">600ms</option>
+              <option value="650">650ms</option><option value="700">700ms</option><option value="750">750ms</option>
+              <option value="800">800ms</option><option value="850">850ms</option><option value="900">900ms</option>
+              <option value="950">950ms</option><option value="1000">1000ms</option>
+            </select>
+            <span class="unit">ms</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leak mode timing -->
+      <div id="leak-timing-section" style="display:none">
+        <div style="font-size:11px;font-weight:700;color:var(--red);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">漏氣模式 · 發送參數</div>
+
+        <div class="field">
+          <label>每次封包數量</label>
+          <div class="field-row">
+            <select id="leak-packet-count">
+              <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+              <option value="4">4</option><option value="5" selected>5</option><option value="6">6</option>
+              <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+              <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+              <option value="13">13</option><option value="14">14</option><option value="15">15</option>
+              <option value="16">16</option><option value="17">17</option><option value="18">18</option>
+              <option value="19">19</option><option value="20">20</option>
+            </select>
+            <span class="unit">個</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>封包間隔時間</label>
+          <div class="field-row">
+            <select id="leak-packet-interval">
+              <option value="50" selected>50ms</option><option value="100">100ms</option><option value="150">150ms</option>
+              <option value="200">200ms</option><option value="250">250ms</option><option value="300">300ms</option>
+              <option value="350">350ms</option><option value="400">400ms</option><option value="450">450ms</option>
+              <option value="500">500ms</option><option value="550">550ms</option><option value="600">600ms</option>
+              <option value="650">650ms</option><option value="700">700ms</option><option value="750">750ms</option>
+              <option value="800">800ms</option><option value="850">850ms</option><option value="900">900ms</option>
+              <option value="950">950ms</option><option value="1000">1000ms</option>
+            </select>
+            <span class="unit">ms</span>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+      <button class="btn btn-outline-red" style="width:100%" onclick="applyTire()">套用到此輪胎</button>
+    </div>
+  </section>
+
+  <!-- Right: Control + Payload -->
+  <section>
+    <div class="sec-title">廣播控制</div>
+    <div class="form-card">
+      <div class="field">
+        <label>廣播模式</label>
+        <div class="mode-grid">
+          <div class="mode-card active" onclick="setMode('single')" id="mode-single">
+            <div class="mc-icon">📡</div>
+            <div class="mc-label">單輪廣播</div>
+            <div class="mc-desc">指定單顆輪胎</div>
+          </div>
+          <div class="mode-card" onclick="setMode('all')" id="mode-all">
+            <div class="mc-icon">🔄</div>
+            <div class="mc-label">輪流廣播</div>
+            <div class="mc-desc">4 顆依序切換</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field" id="tire-select-wrap">
+        <label>選擇輪胎</label>
+        <select id="tire-select" onchange="selectTire(this.value)">
+          <option value="FL">FL — 左前</option>
+          <option value="FR">FR — 右前</option>
+          <option value="RL">RL — 左後</option>
+          <option value="RR">RR — 右後</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>廣播間隔</label>
+        <div class="field-row">
+          <input type="number" id="interval" min="20" max="10000" step="10" value="100">
+          <span class="unit">ms</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>HCI 設備</label>
+        <input type="text" id="hci-dev" value="hci0">
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-red" onclick="startAdv()">▶ 開始廣播</button>
+        <button class="btn btn-gray" onclick="stopAdv()">■ 停止</button>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-item"><div class="s-label">頻道</div><div class="s-val">37 / 38 / 39</div></div>
+      <div class="status-item"><div class="s-label">速率</div><div class="s-val">1 Mbps</div></div>
+      <div class="status-item"><div class="s-label">TX Power</div><div class="s-val">−4 dBm</div></div>
+      <div class="status-item"><div class="s-label">HCI</div><div class="s-val" id="hci-display">hci0</div></div>
+    </div>
+
+    <div style="margin-top:24px">
+      <div class="sec-title">Raw Payload</div>
+      <div class="payload-box" id="payload-display">
+        <span class="pl-label">等待廣播啟動...</span>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <div class="sec-title">廣播日誌</div>
+      <div class="log-box" id="log-box">
+        <div class="log-row"><span class="log-msg" style="color:#bbb">尚無紀錄</span></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div>友立森科技有限公司 · 台北市松山區八德路4段123號2樓之3 · +886-2-25280633</div>
+  <div>© 友立森科技有限公司 版權所有</div>
+</footer>
+
+<script>
+const API = `http://${location.hostname}:5000/api`;
+const TIRES = ['FL','FR','RL','RR'];
+let currentTire = 'FL';
+let currentMode = 'single';
+let tireData = {};
+let formInitialized = false;
+TIRES.forEach(t => tireData[t] = {
+  pressure: 2.50, temperature: 25, voltage: 3.00, leak: false,
+  d2: '00', d3: '00', d4: '00',
+  normal_interval: 60, normal_packet_count: 1, normal_packet_interval: 50,
+  leak_packet_count: 5, leak_packet_interval: 50,
+});
+
+async function initFromServer() {
+  try {
+    const res = await fetch(`${API}/status`);
+    const s = await res.json();
+    // 用後端資料覆蓋本地 tireData
+    TIRES.forEach(t => {
+      if (s.tires?.[t]) {
+        tireData[t] = { ...tireData[t], ...s.tires[t] };
+      }
+    });
+    // 套用 mode
+    setMode(s.mode || 'single');
+    // 套用 HCI
+    if (s.hci) {
+      document.getElementById('hci-dev').value = s.hci;
+      document.getElementById('hci-display').textContent = s.hci;
+    }
+    // 更新車輛圖示上的數值
+    TIRES.forEach(t => {
+      const d = tireData[t];
+      const tp = document.getElementById(`tp-${t}`);
+      const tt = document.getElementById(`tt-${t}`);
+      const tv = document.getElementById(`tv-${t}`);
+      if (tp) tp.textContent = d.pressure.toFixed(2);
+      if (tt) tt.textContent = d.temperature.toFixed(1);
+      if (tv) tv.textContent = d.voltage.toFixed(2);
+    });
+  } catch(e) {
+    console.warn('無法從伺服器載入設定，使用預設值', e);
+  }
+  selectTire(currentTire);
+}
+
+function selectTire(id) {
+  if (formInitialized) saveCurrentTireData();
+  formInitialized = true;
+  currentTire = id;
+  TIRES.forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === id);
+    document.getElementById(`tc-${t}`).classList.toggle('selected', t === id);
+    const node = document.getElementById(`node-${t}`);
+    if (!node.classList.contains('broadcasting')) {
+      node.classList.toggle('selected', t === id);
+    }
+  });
+  document.getElementById('tire-select').value = id;
+  const d = tireData[id];
+  document.getElementById('pressure').value = d.pressure.toFixed(2);
+  document.getElementById('pressure-range').value = d.pressure;
+  document.getElementById('temperature').value = d.temperature;
+  document.getElementById('temperature-range').value = d.temperature;
+  document.getElementById('voltage').value = d.voltage.toFixed(2);
+  document.getElementById('voltage-range').value = d.voltage;
+  document.getElementById('leak').checked = d.leak;
+  document.getElementById('leak-label').textContent = d.leak ? '⚠ 漏氣' : '正常';
+  document.getElementById('d2').value = d.d2 || '00';
+  document.getElementById('d3').value = d.d3 || '00';
+  document.getElementById('d4').value = d.d4 || '00';
+  document.getElementById('normal-interval').value = d.normal_interval;
+  document.getElementById('normal-interval-range').value = d.normal_interval;
+  document.getElementById('normal-interval-unit').textContent = d.normal_interval === 0 ? '不發送' : '秒';
+  document.getElementById('normal-packet-count').value = d.normal_packet_count;
+  document.getElementById('normal-packet-interval').value = d.normal_packet_interval;
+  document.getElementById('leak-packet-count').value = d.leak_packet_count;
+  document.getElementById('leak-packet-interval').value = d.leak_packet_interval;
+  updateTimingSection(d.leak);
+}
+
+function saveCurrentTireData() {
+  const hexByte = id => {
+    const v = document.getElementById(id).value.replace(/[^0-9a-fA-F]/g, '').slice(0,2).padStart(2,'0');
+    document.getElementById(id).value = v.toUpperCase();
+    return v;
+  };
+  tireData[currentTire] = {
+    pressure: parseFloat(document.getElementById('pressure').value),
+    temperature: parseFloat(document.getElementById('temperature').value),
+    voltage: parseFloat(document.getElementById('voltage').value),
+    leak: document.getElementById('leak').checked,
+    d2: hexByte('d2'),
+    d3: hexByte('d3'),
+    d4: hexByte('d4'),
+    normal_interval: parseInt(document.getElementById('normal-interval').value),
+    normal_packet_count: parseInt(document.getElementById('normal-packet-count').value),
+    normal_packet_interval: parseInt(document.getElementById('normal-packet-interval').value),
+    leak_packet_count: parseInt(document.getElementById('leak-packet-count').value),
+    leak_packet_interval: parseInt(document.getElementById('leak-packet-interval').value),
+  };
+  const d = tireData[currentTire];
+  document.getElementById(`tp-${currentTire}`).textContent = d.pressure.toFixed(2);
+  document.getElementById(`tt-${currentTire}`).textContent = d.temperature.toFixed(1);
+  document.getElementById(`tv-${currentTire}`).textContent = d.voltage.toFixed(2);
+}
+
+function syncSlider(id) { document.getElementById(`${id}-range`).value = document.getElementById(id).value; }
+function syncInput(id)   { document.getElementById(id).value = document.getElementById(`${id}-range`).value; }
+function syncNormalInterval(val) {
+  const v = Math.round(parseInt(val) / 5) * 5;
+  document.getElementById('normal-interval').value = v;
+  document.getElementById('normal-interval-range').value = v;
+  document.getElementById('normal-interval-unit').textContent = v === 0 ? '不發送' : '秒';
+}
+function roundNormalInterval(val) {
+  const v = Math.round(parseInt(val || 0) / 5) * 5;
+  document.getElementById('normal-interval').value = v;
+  document.getElementById('normal-interval-range').value = v;
+  document.getElementById('normal-interval-unit').textContent = v === 0 ? '不發送' : '秒';
+}
+
+function updateTimingSection(isLeak) {
+  document.getElementById('normal-timing-section').style.display = isLeak ? 'none' : '';
+  document.getElementById('leak-timing-section').style.display = isLeak ? '' : 'none';
+}
+function onLeakChange() {
+  const isLeak = document.getElementById('leak').checked;
+  document.getElementById('leak-label').textContent = isLeak ? '⚠ 漏氣' : '正常';
+  updateTimingSection(isLeak);
+}
+
+async function applyTire() {
+  saveCurrentTireData();
+  await fetch(`${API}/tire/${currentTire}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(tireData[currentTire]),
+  });
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-single').classList.toggle('active', mode === 'single');
+  document.getElementById('mode-all').classList.toggle('active', mode === 'all');
+  document.getElementById('tire-select-wrap').style.display = mode === 'single' ? '' : 'none';
+}
+
+async function startAdv() {
+  saveCurrentTireData();
+  for (const t of TIRES) {
+    await fetch(`${API}/tire/${t}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tireData[t]),
+    });
+  }
+  await fetch(`${API}/hci`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hci: document.getElementById('hci-dev').value }),
+  });
+  document.getElementById('hci-display').textContent = document.getElementById('hci-dev').value;
+  await fetch(`${API}/start`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: currentMode, tire: currentTire, interval: parseInt(document.getElementById('interval').value) }),
+  });
+}
+
+async function stopAdv() { await fetch(`${API}/stop`, { method: 'POST' }); }
+
+async function pollStatus() {
+  try {
+    const res = await fetch(`${API}/status`);
+    const s = await res.json();
+
+    const pill = document.getElementById('txPill');
+    const dot  = document.getElementById('txDot');
+    const lbl  = document.getElementById('txLabel');
+    dot.classList.toggle('on', s.running);
+    pill.classList.toggle('on', s.running);
+    lbl.textContent = s.running ? `TX · ${s.current_tire}` : 'IDLE';
+
+    TIRES.forEach(t => {
+      const node  = document.getElementById(`node-${t}`);
+      const badge = document.getElementById(`badge-${t}`);
+      const isTx  = s.running && s.current_tire === t;
+      const isLeak= s.tires?.[t]?.leak;
+      node.classList.toggle('broadcasting', isTx);
+      node.classList.toggle('selected', t === currentTire && !isTx);
+      if (isTx)       { badge.className = 'tc-badge b-tx';   badge.textContent = 'TX'; }
+      else if (isLeak){ badge.className = 'tc-badge b-leak'; badge.textContent = 'LEAK'; }
+      else            { badge.className = 'tc-badge b-idle'; badge.textContent = s.running ? 'STANDBY' : 'IDLE'; }
+    });
+
+    const pl = s.last_payload?.[s.current_tire];
+    if (pl) {
+      document.getElementById('payload-display').innerHTML = `
+        <span class="pl-label">MFR DATA · ${s.current_tire}</span>
+        <span class="pl-hex">${pl.mfr_hex}</span><br>
+        <span class="pl-label" style="margin-top:6px">ADV PAYLOAD</span>
+        <span class="pl-hex">${pl.adv_hex}</span><br>
+        <span class="pl-label" style="margin-top:6px">DECODED</span>
+        <span class="pl-meta">Pressure=0x${pl.pressure_raw?.toString(16).toUpperCase().padStart(2,'0')} &nbsp;|&nbsp; Temp=0x${pl.temp_raw?.toString(16).toUpperCase().padStart(2,'0')} &nbsp;|&nbsp; Volt=0x${pl.voltage_raw?.toString(16).toUpperCase().padStart(2,'0')} &nbsp;|&nbsp; <span class="pl-crc">CRC=${pl.crc}</span></span>
+      `;
+    }
+
+    if (s.log?.length) {
+      document.getElementById('log-box').innerHTML = s.log.slice().reverse()
+        .map(l => `<div class="log-row"><span class="log-time">${l.time}</span><span class="log-msg">${l.msg}</span></div>`).join('');
+    }
+  } catch(e) {
+    document.getElementById('txLabel').textContent = 'OFFLINE';
+  }
+}
+
+setMode('single');
+initFromServer();
+setInterval(pollStatus, 1000);
+</script>
+</body>
+</html>

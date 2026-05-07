@@ -1,0 +1,17 @@
+[Unit]
+Description=TPMS BLE Flask Server
+After=network.target bluetooth.target bluetooth-up.service
+Wants=bluetooth.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/pi/vc01-rpi4
+ExecStart=/usr/bin/python3 /home/pi/vc01-rpi4/tpms_server.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
