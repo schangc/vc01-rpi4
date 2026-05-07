@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+*.bak
+*.bak2
+log/
+tpms_settings.json
