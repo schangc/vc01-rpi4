@@ -80,25 +80,6 @@
     letter-spacing: 0.5px;
   }
 
-  .hero-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border);
-    gap: 0;
-  }
-  .hero-tab {
-    padding: 10px 20px;
-    font-size: 13px;
-    color: var(--mid);
-    cursor: pointer;
-    border: none;
-    background: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    transition: all 0.2s;
-    letter-spacing: 0.3px;
-  }
-  .hero-tab:hover { color: var(--red); }
-  .hero-tab.active { color: var(--red); border-bottom-color: var(--red); font-weight: 500; }
 
   /* ── Main layout ── */
   main {
@@ -459,11 +440,6 @@
   <div class="tx-pill" id="txPill" style="margin:8px 0 0;"><div class="tx-dot" id="txDot"></div><span id="txLabel">IDLE</span></div>
   <p class="hero-sub">BLE 廣播模擬工具 · 2.4GHz ISM · GFSK · 1Mbps · ADV 廣播模式</p>
   <p class="hero-ver">ver.20260520-01</p>
-  <div class="hero-tabs">
-    <button class="hero-tab active">TX 控制台</button>
-    <button class="hero-tab">裝置資訊</button>
-    <button class="hero-tab">關於本裝置</button>
-  </div>
 </div>
 
 <main>
