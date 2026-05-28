@@ -22,6 +22,7 @@ from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 
 app = Flask(__name__)
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 CORS(app)
 
 # ── 設定檔路徑 ────────────────────────────────────────────────────────────────
