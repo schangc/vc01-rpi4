@@ -602,10 +602,10 @@
         <div class="field">
           <label>封包間隔時間</label>
           <div class="field-row">
-            <input type="number" id="normal-packet-interval" min="20" max="1000" step="20" value="20" oninput="syncSlider('normal-packet-interval')">
+            <input type="number" id="normal-packet-interval" min="10" max="1000" step="5" value="20" oninput="syncSlider('normal-packet-interval')">
             <span class="unit">ms</span>
           </div>
-          <input type="range" id="normal-packet-interval-range" min="20" max="1000" step="20" value="20" oninput="syncInput('normal-packet-interval')">
+          <input type="range" id="normal-packet-interval-range" min="10" max="1000" step="5" value="20" oninput="syncInput('normal-packet-interval')">
         </div>
       </div>
 
@@ -686,7 +686,7 @@
       <div class="field">
         <label>廣播間隔</label>
         <div class="field-row">
-          <input type="number" id="interval" min="20" max="10000" step="10" value="100">
+          <input type="number" id="interval" min="20" max="10000" step="10" value="20">
           <span class="unit">ms</span>
         </div>
       </div>
