@@ -457,6 +457,6 @@ def auto_start_advertising():
 
 if __name__ == "__main__":
     print("TPMS BLE Web Server 啟動中...")
-    print("請用瀏覽器開啟 http://<Pi的IP>:5000")
+    print("請用瀏覽器開啟 http://<Pi的IP>:8101")
     auto_start_advertising()
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=8101, debug=False)
