@@ -29,10 +29,10 @@ CORS(app)
 SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tpms_settings.json")
 LOG_DIR       = os.path.join(os.path.dirname(os.path.abspath(__file__)), "log")
 DEFAULT_PATTERN_TIRES = {
-    "FL": {"pressure":2.1,"temperature":40,"voltage":3.0,"leak":False,"d2":"01","d3":"66","d4":"66","normal_interval":5,"normal_packet_count":5,"normal_packet_interval":100,"leak_packet_count":5,"leak_packet_interval":50,"active":True},
-    "FR": {"pressure":2.1,"temperature":40,"voltage":3.0,"leak":False,"d2":"03","d3":"88","d4":"88","normal_interval":5,"normal_packet_count":5,"normal_packet_interval":100,"leak_packet_count":5,"leak_packet_interval":50,"active":True},
-    "RL": {"pressure":2.1,"temperature":40,"voltage":3.0,"leak":False,"d2":"02","d3":"77","d4":"77","normal_interval":5,"normal_packet_count":5,"normal_packet_interval":100,"leak_packet_count":5,"leak_packet_interval":50,"active":True},
-    "RR": {"pressure":2.1,"temperature":40,"voltage":3.0,"leak":False,"d2":"04","d3":"99","d4":"99","normal_interval":5,"normal_packet_count":5,"normal_packet_interval":100,"leak_packet_count":5,"leak_packet_interval":50,"active":True},
+    "FL": {"pressure":2.1,"temperature":40,"voltage":3.0,"leak":False,"d2":"01","d3":"66","d4":"66","normal_interval":5,"normal_packet_count":5,"normal_packet_interval":20,"leak_packet_count":5,"leak_packet_interval":50,"active":True},
+    "FR": {"pressure":2.1,"temperature":40,"voltage":3.0,"leak":False,"d2":"03","d3":"88","d4":"88","normal_interval":5,"normal_packet_count":5,"normal_packet_interval":20,"leak_packet_count":5,"leak_packet_interval":50,"active":True},
+    "RL": {"pressure":2.1,"temperature":40,"voltage":3.0,"leak":False,"d2":"02","d3":"77","d4":"77","normal_interval":5,"normal_packet_count":5,"normal_packet_interval":20,"leak_packet_count":5,"leak_packet_interval":50,"active":True},
+    "RR": {"pressure":2.1,"temperature":40,"voltage":3.0,"leak":False,"d2":"04","d3":"99","d4":"99","normal_interval":5,"normal_packet_count":5,"normal_packet_interval":20,"leak_packet_count":5,"leak_packet_interval":50,"active":True},
 }
 
 
@@ -103,7 +103,7 @@ HCI_DEV = _saved["hci"]
 advertising_state = {
     "running": False,
     "mode": _saved["mode"],
-    "interval": 100,
+    "interval": 20,
     "tires": _saved["tires"],
     "current_tire": "FL",
     "last_payload": {},
